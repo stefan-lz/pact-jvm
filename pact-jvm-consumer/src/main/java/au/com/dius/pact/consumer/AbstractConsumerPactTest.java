@@ -3,9 +3,9 @@ package au.com.dius.pact.consumer;
 import au.com.dius.pact.model.Interaction;
 import au.com.dius.pact.model.Pact;
 import org.junit.Test;
+import scalaz.Validation;
 
-import static au.com.dius.pact.consumer.ConsumerInteractionJavaDsl.pactVerified;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public abstract class AbstractConsumerPactTest {
@@ -31,7 +31,7 @@ public abstract class AbstractConsumerPactTest {
 
         String state = pact.interactions().head().providerState();
 
-        PactVerification.VerificationResult result = new ConsumerPact(pact).runConsumer(config, state,
+        Validation result = new ConsumerPact(pact).runConsumer(config, state,
             new Runnable() {
                 public void run() {
                     try {
@@ -41,6 +41,6 @@ public abstract class AbstractConsumerPactTest {
                     }
                 }
             });
-        assertEquals(pactVerified, result);
+        assertTrue(result.toString(), result.isSuccess());
     }
 }

@@ -1,71 +1,68 @@
 package au.com.dius.pact.consumer
 
 import au.com.dius.pact.model._
-import scala.util.{Success, Failure, Try}
 import au.com.dius.pact.model.Pact.ConflictingInteractions
+import scalaz.{Validation, Success, Failure}
+import scala.util.Try
 
 object PactVerification {
+  type VerificationResult = Validation[Seq[FailureMode], Unit]
+  trait FailureMode
 
-  trait VerificationResult
+  implicit def failure(f: FailureMode) = Failure[Seq[FailureMode], Unit](Seq(f))
+
   private def logEach(msg: String, iterable: Iterable[AnyRef]): String = {
     s"$msg:${iterable.map("\n" + _)}"
   }
 
-  case class PactFailure(missing: Iterable[Interaction], unexpected: Iterable[Interaction]) extends VerificationResult {
-    override def toString: String = {
-      "Multiple pact failures\n" +
-        logEach("missing interactions:", missing) +
-        logEach("unexpected interactions:", unexpected)
-    }
-  }
-  case class PactWritten(destination: String) extends VerificationResult
-  case object PactVerified extends VerificationResult
-  case class MissingInteractions(missing: Iterable[Interaction]) extends VerificationResult {
+  case class MissingInteractions(missing: Iterable[Interaction]) extends FailureMode {
     override def toString: String = {
       logEach("missing interactions:", missing)
     }
   }
 
-  case class UnexpectedInteractions(unexpected: Iterable[Interaction]) extends VerificationResult {
+  case class UnexpectedInteractions(unexpected: Iterable[Interaction]) extends FailureMode {
     override def toString: String = {
       logEach("unexpected interactions:", unexpected)
     }
   }
-  case class ConsumerTestsFailed(error: Throwable) extends VerificationResult
-  case class PactMergeFailed(error: ConflictingInteractions) extends VerificationResult {
+
+  case class ConsumerTestsFailed(error: Throwable) extends FailureMode
+
+  case class PactMergeFailed(error: ConflictingInteractions) extends FailureMode {
     override def toString: String = {
       s"This interaction conflicts with others: \n$error"
     }
   }
 
-
-  case class ComposableVerification(o: VerificationResult) {
-    def and (v: VerificationResult) = { (o, v) match {
-      case (PactVerified, PactVerified) => PactVerified
-      case (MissingInteractions(a), UnexpectedInteractions(b)) => PactFailure(a, b)
-      case (MissingInteractions(a), _) => MissingInteractions(a)
-      case (_, UnexpectedInteractions(b)) => UnexpectedInteractions(b)
-    }}
-
+  case class FailedToWritePact(e: Throwable) extends FailureMode {
+    override def toString: String = {
+      s"Failed to write pact: ${e.getMessage} stackTrace:\n${e.getStackTraceString}"
+    }
   }
-  implicit def composable(a: VerificationResult) = ComposableVerification(a)
 
   def apply(expected: Iterable[Interaction], actual: Iterable[Interaction]): VerificationResult = {
     val invalidResponse = Response(500, None, None)
-    allExpectedInteractions(expected, actual) and noUnexpectedInteractions(invalidResponse, actual)
+    //TODO: work out the correct way to combine these validations
+    (allExpectedInteractions(expected, actual), noUnexpectedInteractions(invalidResponse, actual)) match {
+      case (Failure(a), Failure(b)) => Failure(a ++ b)
+      case (Failure(a), _ ) => Failure(a)
+      case (_, Failure(b)) => Failure(b)
+      case (_, _) => Success()
+    }
   }
 
   def apply(expected: Iterable[Interaction], actual: Iterable[Interaction], testResult: Try[Unit]): VerificationResult = {
     testResult match {
-      case Success(_) => PactVerification(expected, actual)
-      case Failure(t) => ConsumerTestsFailed(t)
+      case scala.util.Success(_) => PactVerification(expected, actual)
+      case scala.util.Failure(t) => ConsumerTestsFailed(t)
     }
   }
 
   def noUnexpectedInteractions(invalid: Response, actual: Iterable[Interaction]): VerificationResult = {
     val unexpected = actual.filter(_.response == invalid)
     if(unexpected.isEmpty) {
-      PactVerified
+      Success()
     } else {
       UnexpectedInteractions(unexpected)
     }
@@ -77,7 +74,7 @@ object PactVerification {
     }
     val missing = expected.filterNot(in(actual))
     if(missing.isEmpty) {
-      PactVerified
+      Success()
     } else {
       MissingInteractions(missing)
     }

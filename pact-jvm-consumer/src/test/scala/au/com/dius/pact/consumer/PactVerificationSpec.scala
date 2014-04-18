@@ -5,14 +5,15 @@ import Fixtures._
 import org.specs2.mock.Mockito
 import au.com.dius.pact.model.{Response, Interaction}
 import au.com.dius.pact.consumer.PactVerification._
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure => TFailure, Success => TSuccess, Try}
+import scalaz.{Failure, Success}
 
 class PactVerificationSpec extends Specification with Mockito {
   "PactVerification" should {
     def test(
       actualInteractions: Iterable[Interaction],
       expectedResult: VerificationResult,
-      testPassed: Try[Unit] = Success(Unit)) = {
+      testPassed: Try[Unit] = TSuccess(Unit)) = {
         PactVerification(pact.interactions, actualInteractions, testPassed) must beEqualTo(expectedResult)
     }
 
@@ -24,7 +25,7 @@ class PactVerificationSpec extends Specification with Mockito {
       test(
         Seq(),
         ConsumerTestsFailed(error),
-        Failure(error)
+        TFailure(error)
       )
     }
 
@@ -46,14 +47,14 @@ class PactVerificationSpec extends Specification with Mockito {
       val actual = Seq(unexpectedInteraction)
       test(
         actual,
-        PactFailure(missing = pact.interactions, unexpected = actual)
+        Failure(Seq(MissingInteractions(pact.interactions), UnexpectedInteractions(actual)))
       )
     }
 
     "pass successful runs" in {
       test(
         interactions.map(_.copy(description="MockServiceProvider received")),
-        PactVerified
+        Success()
       )
     }
   }

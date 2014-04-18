@@ -10,6 +10,7 @@ import org.json4s.JsonDSL._
 import org.json4s.jackson.Serialization
 import au.com.dius.pact.model.unfiltered.Conversions
 import org.jboss.netty.handler.codec.http.QueryStringDecoder
+import scalaz.Success
 
 object ListServers {
 
@@ -49,7 +50,7 @@ object Complete {
       msp =>
         val verification = verify(msp.pact, msp.interactions)
         val result = PactGeneration(msp.pact, verification) match {
-          case PactVerified => pactWritten(Response(200, Response.CrossSiteHeaders, None), msp.config.port)
+          case Success(_) => pactWritten(Response(200, Response.CrossSiteHeaders, None), msp.config.port)
           case error => pactWritten(Response(400, Map[String, String](), toJson(error)), msp.config.port)
         }
         msp.stop

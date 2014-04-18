@@ -6,8 +6,6 @@ import java.util.Map;
 
 
 public class ConsumerInteractionJavaDsl {
-    public static PactVerification.VerificationResult pactVerified = PactVerification.PactVerified$.MODULE$;
-
     private String providerState;
     private String description;
     private Request request;

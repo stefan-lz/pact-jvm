@@ -1,22 +1,20 @@
 package au.com.dius.pact.consumer
 
-import au.com.dius.pact.consumer.PactVerification.{PactMergeFailed, PactVerified, VerificationResult}
+import au.com.dius.pact.consumer.PactVerification.{FailedToWritePact, PactMergeFailed, VerificationResult}
 import au.com.dius.pact.model.Pact
 import java.io.{PrintWriter, File}
 import au.com.dius.pact.model.Pact.{ConflictingInteractions, MergeSuccess}
+import scalaz.Success
 
 object PactGeneration {
   private val hackyPactStore = scala.collection.mutable.Map[String, Pact]()
 
   //TODO: handle multiple sources writing interactions to the same pact, threadsafe merge and verify
   def apply(pact: Pact, verification: VerificationResult): VerificationResult = {
-    verification match {
-      case PactVerified => {
-        hackyPactStore.synchronized {
-          merge(pact)
-        }
+    verification.flatMap{ _ =>
+      hackyPactStore.synchronized {
+        merge(pact)
       }
-      case _ => verification
     }
   }
 
@@ -55,12 +53,12 @@ object PactGeneration {
       sort(pact).serialize(writer)
       writer.close()
       println(s"pact written to: $pactDestination")
-      PactVerified
+      Success()
     } catch {
       case t:Throwable => {
         println(s"unable to write: $pact")
-        throw t
+        FailedToWritePact(t)
       }
-  }
+    }
   }
 }

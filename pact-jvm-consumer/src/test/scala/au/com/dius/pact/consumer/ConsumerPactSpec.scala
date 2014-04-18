@@ -6,9 +6,10 @@ import Fixtures._
 import au.com.dius.pact.model.{MakePact, MakeInteraction}
 import MakeInteraction._
 import ConsumerPact._
-import au.com.dius.pact.consumer.PactVerification.{ConsumerTestsFailed, PactVerified}
+import au.com.dius.pact.consumer.PactVerification.ConsumerTestsFailed
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Await}
+import scalaz.{Failure, Success}
 
 /**
  * This is what a consumer pact should roughly look like
@@ -40,7 +41,7 @@ class ConsumerPactSpec extends Specification {
 
       awaitResult(pact.runConsumer(config, interaction.providerState) {
         awaitResult(ConsumerService(config.url).hitEndpoint) must beTrue
-      }) must beEqualTo(PactVerified)
+      }) must beEqualTo(Success())
 
       //TODO: use environment property for pact output folder
       val saved: String = io.Source.fromFile(s"target/pacts/${pact.consumer.name}-${pact.provider.name}.json").mkString
@@ -55,7 +56,7 @@ class ConsumerPactSpec extends Specification {
       val config = PactServerConfig()
       awaitResult(pact.runConsumer(config, interaction.providerState) {
         throw error
-      }) must beEqualTo(ConsumerTestsFailed(error))
+      }) must beEqualTo(Failure(Seq(ConsumerTestsFailed(error))))
     }
   }
 }

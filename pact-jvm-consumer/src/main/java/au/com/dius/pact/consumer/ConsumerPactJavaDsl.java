@@ -2,9 +2,7 @@ package au.com.dius.pact.consumer;
 
 import au.com.dius.pact.model.*;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class ConsumerPactJavaDsl {
 

@@ -3,6 +3,7 @@ resolvers ++= Seq("typesafe-releases" at "http://repo.typesafe.com/typesafe/rele
 
 libraryDependencies ++= Seq(
   "junit"        %  "junit"          % "4.11",
+  "org.scalaz"   %% "scalaz-core" % "7.0.6",
   "net.databinder" %% "unfiltered-netty-server" % "0.7.1",
   "net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
   "org.clapper"  %% "avsl" % "1.0.1",
