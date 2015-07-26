@@ -21,7 +21,12 @@ class PactBodyBuilder extends Matchers {
   }
 
   String getBody() {
-    new JsonBuilder(bodyMap).toPrettyString()
+    if (bodyMap.size() == 1 && bodyMap.rootJsonArray) {
+      new JsonBuilder(bodyMap.rootJsonArray).toPrettyString()
+    }
+    else {
+      new JsonBuilder(bodyMap).toPrettyString()
+    }
   }
 
   def methodMissing(String name, args) {
@@ -78,8 +83,14 @@ class PactBodyBuilder extends Matchers {
       def matcher = regexp(value as Pattern, value2)
       bodyMap[name] = setMatcherAttribute(matcher, path + '.' + name)
     } else if (value instanceof LikeMatcher) {
-      setMatcherAttribute(value, path + '.' + name)
-      bodyMap[name] = [ invokeClosure(value.values.last(), '.' + name + '[*]') ]
+      if (name == 'rootJsonArray') {
+        setMatcherAttribute(value, path)
+        bodyMap[name] = [ invokeClosure(value.values.last(), '[*]') ]
+      }
+      else {
+        setMatcherAttribute(value, path + '.' + name)
+        bodyMap[name] = [ invokeClosure(value.values.last(), '.' + name + '[*]') ]
+      }
     } else if (value instanceof Matcher) {
       bodyMap[name] = setMatcherAttribute(value, path + '.' + name)
     } else if (value instanceof List) {

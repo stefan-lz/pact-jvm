@@ -139,6 +139,52 @@ class PactBodyBuilderTest {
 
     }
 
+    @Test
+    void 'arrays at root level with matching'() {
+        def service = new PactBuilder()
+        service {
+            serviceConsumer "Consumer"
+            hasPactWith "Provider"
+
+            uponReceiving('a request with array matching')
+            withAttributes(method: 'get', path: '/')
+            withBody() {
+                rootJsonArray maxLike(10) {
+                    id identifier
+                    lineItems minLike(1) {
+                        id identifier
+                        amount numeric
+                        productCodes eachLike { code string('A100') }
+                    }
+                }
+            }
+            willRespondWith(
+                    status: 200,
+                    headers: ['Content-Type': 'application/json']
+            )
+        }
+        def fragment = service.fragment()
+        assert service.interactions.size() == 1
+        assert asJavaMap(service.interactions[0].request.matchingRules) == [
+                '$.body': [max: 10, 'match': 'type'],
+                '$.body[*].id': ['match': 'type'],
+                '$.body[*].lineItems': ['min': 1, 'match': 'type'],
+                '$.body[*].lineItems[*].id': [match: 'type'],
+                '$.body[*].lineItems[*].amount': [match: 'number'],
+                '$.body[*].lineItems[*].productCodes': ['match': 'type'],
+                '$.body[*].lineItems[*].productCodes[*].code': [match: 'type']
+        ]
+
+        def keys = walkGraph(new JsonSlurper().parseText(service.interactions[0].request.body.get()))
+        assert keys == [0,
+                       ['id', [],
+                        'lineItems', [0,
+                                     ['amount', [],
+                                      'id', [],
+                                      'productCodes', [0,
+                                                      ['code', []]]]]]]
+    }
+
     List walkGraph(def value) {
         def set = []
         if (value instanceof Map) {

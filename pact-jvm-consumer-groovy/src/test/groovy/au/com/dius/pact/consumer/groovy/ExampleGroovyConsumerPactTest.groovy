@@ -89,4 +89,37 @@ class ExampleGroovyConsumerPactTest {
         assert result instanceof PactMismatch
         assert result.results.missing.size() == 1
     }
+
+    @Test
+    void "A service consumer side pact using rootJsonArray"() {
+        def blur_service = new PactBuilder().build {
+            serviceConsumer "Consumer"
+            hasPactWith "blur"
+        }
+
+        blur_service {
+            uponReceiving('a retrieve song request')
+            withAttributes(method: 'post', path: '/song', headers: ['Content-Type': 'application/json'])
+            withBody {
+                rootJsonArray maxLike(2) {
+                    song(~/.*/, 'a song')
+                }
+            }
+            willRespondWith(
+                    status: 202,
+                    headers: ['Content-Type': 'application/json'],
+            )
+        }
+
+        VerificationResult result = blur_service.run() { config ->
+            def client = new RESTClient(config.url())
+            def blur_response = client.post(path: '/song',
+                                             contentType: 'application/json',
+                                             body: [[song: 'song 1'], [song: 'song 2']])
+
+            assert blur_response.status == 202
+            assert blur_response.contentType == 'application/json'
+        }
+        assert result == PactVerified$.MODULE$
+    }
 }
